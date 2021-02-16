@@ -1,0 +1,84 @@
+---
+title: "CourseProject"
+author: "dillonchewwx"
+date: "17/02/2021"
+output: html_document
+---
+
+# Executive Summary
+
+In this report, the mtcars dataset would be used to answer the following two questions:
+
+1. Is an automatic or manual transmission better for MPG (miles per gallon)?
+2. Quantify the MPG difference between automatic and manual transmissions.
+
+Using regression models, we observe ...
+
+# Exploratory Data Analysis
+We will begin by loading the mtcars dataset and examining it. 
+```{r}
+library(datasets)
+data(mtcars)
+head(mtcars)
+str(mtcars)
+summary(mtcars$mpg)
+```
+It is noted that the transmission variable is stored in the column named am with 0 = automatic and 1 = manual - let's change the values for plotting.
+```{r}
+library(tidyverse)
+mtcars2<-mtcars %>%
+    mutate(am=ifelse(am==0, "Automatic", "Manual"))
+mtcars2$am
+```
+Let's check the normality of the data.
+```{r}
+library(rstatix)
+mtcars2 %>%
+    group_by(am) %>%
+    shapiro_test(mpg)
+```
+Since p > 0.05 fo both Automatic and Manual transmission groups, we fail to reject the null hypothesis of the distributions being normal. We can proceed to use t-tests for the comparison of the mean mpg. 
+
+Let's see the boxplot of mpg with transmission. 
+```{r fig.height=5, fig.width=10}
+library(ggpubr)
+ggplot(mtcars2, aes(x=am, y=mpg, fill=am)) +
+    geom_boxplot(outlier.shape=NA) +
+    geom_jitter(height=0, width=0.1) + 
+    theme_bw() +
+    theme(legend.position="none", plot.title = element_text(hjust = 0.5)) +
+    labs(x="Transmission", y="mpg (Miles/(US) gallon", title="Type of Transmission vs mpg") +
+    stat_compare_means(method="t.test", label.x=1, label.y.npc=0.9)
+```
+From the boxplots and subsequent t-test (p=0.0014), we have sufficient evidence to conclude that cars with manual transmissions provide better gas mileage than automatic transmission.
+
+# Regression Models
+(Redo This Part with Linear Models and Multivariate Models)
+In this section, we will attempt to use regression models to quantify the MPG difference between automatic and manual transmissions. Noting that transmission is binary - either automatic or manual, we shall perform a logistic regression with variables am as the outcome and mpg as the factor. The model would take the form of: 
+$$Pr(AM_i|MPG_i, b_0, b_1)=\frac{exp(b_0+b_1MPG_i)}{1+exp(b_0+b_1MPG_i)}$$ 
+or 
+$$log(\frac{Pr(AM_i|MPG_i, b_0, b_1)}{1-Pr(AM_i|MPG_i, b_0, b_1)}=b_0+b_1MPG_i$$ 
+where:
+
+* $AM_i$ - Automatic or Manual
+* $MPG_i$ - Miles per (US) Gallon
+* $b_0$ - log probability of Manual if MPG is 0
+* $b_1$ - increase in log probability of Manual for each additional MPG (compared to 0). 
+
+We will now attempt to fit the data using a logistic regression model.
+```{r fig.height=5, fig.width=10}
+logmdl<-glm(am~mpg, "binomial", mtcars)
+summary(logmdl)
+exp(logmdl$coeff)
+```
+From the calculated odds, we note that the probability of Manual for 0 MPG is 0.001, while the increase in probability for each mpg is 1.36%.
+
+We shall also plot the fitted values.
+```{r}
+ggplot(mtcars, aes(x=mpg, y=logmdl$fitted.values)) +
+    geom_point() +
+    labs(x="mpg (Miles/(US) gallon)", y="Probability of Manual", title="Probablity of Manual vs mpg") +
+    theme_bw()
+```
+From the graph, 
+
