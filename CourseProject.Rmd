@@ -1,5 +1,5 @@
 ---
-title: "CourseProject"
+title: "Regression Models - Course Project"
 author: "dillonchewwx"
 date: "17/02/2021"
 output: html_document
@@ -7,15 +7,15 @@ output: html_document
 
 # Executive Summary
 
-In this report, the mtcars dataset would be used to answer the following two questions:
+In this report, the `mtcars` dataset would be used to answer the following two questions:
 
 1. Is an automatic or manual transmission better for MPG (miles per gallon)?
 2. Quantify the MPG difference between automatic and manual transmissions.
 
-Using regression models, we observe ...
+Through a t-test, we have sufficient evidence (p=0.0014) to conclude that cars with manual transmissions provide better gas mileage than automatic transmission. Using regression models, a linear model shows that manual transmission provide 7.25 mpg more than automatic transmissions, but this single variable only accounts for 36% of the variation. By fitting additional variables to the model such as `disp`, `cyl`, `hp` and `wt`, the improvement was only 1.55 mpg, but this model accounts for 82.7% of the variation. 
 
 # Exploratory Data Analysis
-We will begin by loading the mtcars dataset and examining it. 
+We will begin by loading the `mtcars` dataset and examining it. 
 ```{r}
 library(datasets)
 data(mtcars)
@@ -23,7 +23,7 @@ head(mtcars)
 str(mtcars)
 summary(mtcars$mpg)
 ```
-It is noted that the transmission variable is stored in the column named am with 0 = automatic and 1 = manual - let's change the values for plotting.
+It is noted that the transmission variable is stored in the column named `am` with 0 = automatic and 1 = manual - let's change the values for plotting.
 ```{r}
 library(tidyverse)
 mtcars2<-mtcars %>%
@@ -37,9 +37,9 @@ mtcars2 %>%
     group_by(am) %>%
     shapiro_test(mpg)
 ```
-Since p > 0.05 fo both Automatic and Manual transmission groups, we fail to reject the null hypothesis of the distributions being normal. We can proceed to use t-tests for the comparison of the mean mpg. 
+Since p > 0.05 for both Automatic and Manual transmission groups, we fail to reject the null hypothesis of the distributions being normal. We can proceed to use t-tests for the comparison of the mean MPG. 
 
-Let's see the boxplot of mpg with transmission. 
+Let's see the boxplot of `mpg` with `am`. 
 ```{r fig.height=5, fig.width=10}
 library(ggpubr)
 ggplot(mtcars2, aes(x=am, y=mpg, fill=am)) +
@@ -53,32 +53,46 @@ ggplot(mtcars2, aes(x=am, y=mpg, fill=am)) +
 From the boxplots and subsequent t-test (p=0.0014), we have sufficient evidence to conclude that cars with manual transmissions provide better gas mileage than automatic transmission.
 
 # Regression Models
-(Redo This Part with Linear Models and Multivariate Models)
-In this section, we will attempt to use regression models to quantify the MPG difference between automatic and manual transmissions. Noting that transmission is binary - either automatic or manual, we shall perform a logistic regression with variables am as the outcome and mpg as the factor. The model would take the form of: 
-$$Pr(AM_i|MPG_i, b_0, b_1)=\frac{exp(b_0+b_1MPG_i)}{1+exp(b_0+b_1MPG_i)}$$ 
-or 
-$$log(\frac{Pr(AM_i|MPG_i, b_0, b_1)}{1-Pr(AM_i|MPG_i, b_0, b_1)}=b_0+b_1MPG_i$$ 
-where:
-
-* $AM_i$ - Automatic or Manual
-* $MPG_i$ - Miles per (US) Gallon
-* $b_0$ - log probability of Manual if MPG is 0
-* $b_1$ - increase in log probability of Manual for each additional MPG (compared to 0). 
-
-We will now attempt to fit the data using a logistic regression model.
-```{r fig.height=5, fig.width=10}
-logmdl<-glm(am~mpg, "binomial", mtcars)
-summary(logmdl)
-exp(logmdl$coeff)
-```
-From the calculated odds, we note that the probability of Manual for 0 MPG is 0.001, while the increase in probability for each mpg is 1.36%.
-
-We shall also plot the fitted values.
+In this section, we will attempt to use regression models to quantify the MPG difference between automatic and manual transmissions. To start, we can try a linear model to fit the variable `am` to the outcome `mpg`.
 ```{r}
-ggplot(mtcars, aes(x=mpg, y=logmdl$fitted.values)) +
-    geom_point() +
-    labs(x="mpg (Miles/(US) gallon)", y="Probability of Manual", title="Probablity of Manual vs mpg") +
-    theme_bw()
+fit1<-lm(mpg~am, mtcars)
+summary(fit1)
 ```
-From the graph, 
+Here, we see that the mean MPG for automatic cars is 17.1, while manual transmission provides 7.25 mpg more. However, the $R^2$ value suggests that transmission only accounts for 33.8% of the total variance, and thus a multivariate model might be a better fit to the data. Nonetheless, the p-value of < 0.05 for `am` suggests that there is a linear correlation with `mpg`. 
 
+Lets check the correlation of the other variables to mpg. 
+```{r fig.height=5, fig.width=10}
+library(ggcorrplot)
+corr<-cor(mtcars)
+p.mat<-cor_pmat(mtcars)
+ggcorrplot(corr, hc.order = TRUE, type = "lower", lab = TRUE, p.mat=p.mat, insig="blank")
+```
+From the correlation data, we observe that the variables drat and vs has moderately strong positive correlations with mpg (~0.6), while disp, cyl, hp and wt has strong negative correlations with mpg (~-0.8). Furthermore, we also note that all the abovementioned variables are significantly correlated with mpg. We shall move forward with multivariate models and begin by doing a nested model testing.
+```{r}
+fit<-lm(mpg~., data=mtcars)
+fit2<-update(fit, mpg~am+drat)
+fit3<-update(fit, mpg~am+drat+vs)
+fit4<-update(fit, mpg~am+disp)
+fit5<-update(fit, mpg~am+disp+cyl)
+fit6<-update(fit, mpg~am+disp+cyl+hp)
+fit7<-update(fit, mpg~am+disp+cyl+hp+wt)
+fit8<-update(fit, mpg~am+drat+vs+disp+cyl+hp+wt)
+fit9<-update(fit, mpg~am+cyl)
+fit10<-update(fit, mpg~am+cyl+hp)
+fit11<-update(fit, mpg~am+cyl+hp+wt)
+fit12<-update(fit, mpg~am+hp)
+fit13<-update(fit, mpg~am+hp+wt)
+fit14<-update(fit, mpg~am+wt)
+anova(fit, fit1, fit2, fit3, fit4, fit5, fit6, fit7, fit8, fit9, fit10, fit11, fit12, fit13, fit14)
+```
+From the nested model fit, we observe that the model with Df=1, lowest RSS, and significant p-value is model 8 with mpg ~ am + disp + cyl + hp + wt.
+```{r}
+summary(fit7)
+```
+From the summary, we see that the model explains 82.7% of the variation as given by the $R^2$ value, and manual transmissions result in a 1.55 mpg increase over automatic transmissions.  
+
+# Appendix - Residual plots
+```{r}
+par(mfrow = c(2,2))
+plot(fit7)
+```
