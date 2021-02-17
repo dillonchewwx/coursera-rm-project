@@ -2,7 +2,9 @@
 title: "Regression Models - Course Project"
 author: "dillonchewwx"
 date: "17/02/2021"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 # Executive Summary
